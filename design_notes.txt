@@ -1,0 +1,27 @@
+Linux Text Sequencer:
+
+Following framework:
+
+(1) 
+ - One thread per track. 
+ - Thread reads data from that uses array of file descriptors, indexed by track. 
+ - Thread runs in interval loop, Each thread is synchronized (polls some shared resource)
+ - When thread wakes, it knows which interval and beat it is on (shared across all threads)
+ - plays sample if needed
+ - Use libsdl: http://wiki.libsdl.org/Introduction
+ 
+(2) 
+ - tempo thread is responsible for waking up the other threads depending on tempo.
+ - Maintains a task list (basically all the top level sequencing data, number of bars etc.
+ - This can display scrolling playback data too
+ - UI looks like the guitar-hero pattern - tracks listed right to left,
+ 
+(3) Main thread maintains a command listener interface. Uses dbus or posix message queues to send 
+commands. 
+ - Need to define some sort of control protocol
+
+(4) User issues termSeq commands to control tracks
+ - allows them to script sequence changes
+ 
+
+   
