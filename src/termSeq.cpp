@@ -9,6 +9,7 @@
 #include "termSeq.h"
 #include "audioTrack.h"
 #include <iostream>
+#include <csignal>
 #include <linux/types.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
@@ -42,8 +43,18 @@ void my_audio_callback(void *userdata, Uint8 *stream, int len) {
 	audio_len -= len;
 }
 */
+#include <pthread.h>
+
+int ready;
+
+pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_cond_t cv2 = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex2 = PTHREAD_MUTEX_INITIALIZER;
 
 int main() {
+	ready = 0;
 
 	if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) != 0) {
 		fprintf(stderr, "Unable to initialize SDL: %s\n", SDL_GetError());
@@ -60,40 +71,12 @@ int main() {
 		exit(1);
 	}
 
-/*
-	SDL_Window *window;                    // Declare a pointer
-
-   // Create an application window with the following settings:
-    window = SDL_CreateWindow(
-        "An SDL2 window",                  // window title
-        SDL_WINDOWPOS_UNDEFINED,           // initial x position
-        SDL_WINDOWPOS_UNDEFINED,           // initial y position
-        640,                               // width, in pixels
-        480,                               // height, in pixels
-        SDL_WINDOW_OPENGL                  // flags - see below
-    );
-
-    // Check that the window was successfully made
-    if (window == NULL) {
-        // In the event that the window could not be made...
-        printf("Could not create window: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    // The window is open: enter program loop (see SDL_PollEvent)
-
-    SDL_Delay(3000);  // Pause execution for 3000 milliseconds, for example
-
-    // Close and destroy the window
-    SDL_DestroyWindow(window);
-*/
-
 	AudioTrack *track[8];
 
 	for (int i=0; i<MAX_TRACKS; i++) {
 		track[i] = new AudioTrack();
 		track[i]->setTrack(i);
-		track[i]->start();
+		track[i]->setReady(&ready);
 	}
 
 //	Mix_Chunk *sound1 = NULL;
@@ -101,6 +84,9 @@ int main() {
 	track[0]->setInterval(200000);
 	track[0]->setLoops(48);
 	track[0]->setSound(file);
+	track[0]->setMutex(&mutex);
+	track[0]->setCondVar(&cv);
+	track[0]->start();
 	/*if(sound1 == NULL) {
 		fprintf(stderr, "Unable to load WAV file: %s\n", Mix_GetError());
 	}
@@ -110,7 +96,9 @@ int main() {
 	track[1]->setInterval(400000);
 	track[1]->setLoops(24);
 	track[1]->setSound(file2);
-
+	track[1]->setMutex(&mutex2);
+	track[1]->setCondVar(&cv2);
+	track[1]->start();
 
 
 //	Mix_Chunk *sound2 = NULL;
@@ -198,7 +186,24 @@ int main() {
 
 */
 
-    SDL_Delay(8000);
+	for(int i = 0 ; i < 10 ; i++) {
+
+	    sleep(1);
+		printf("main thread waking others\n");
+
+		   pthread_mutex_lock(&mutex);
+		   ready++;
+		    pthread_cond_signal(&cv);
+		    pthread_mutex_unlock(&mutex);
+
+
+			   pthread_mutex_lock(&mutex2);
+			   ready++;
+			    pthread_cond_signal(&cv2);
+			    pthread_mutex_unlock(&mutex2);
+	}
+
+    //SDL_Delay(8000);
 
 	for (int i=0; i<MAX_TRACKS; i++) {
 		track[i]->detach();
