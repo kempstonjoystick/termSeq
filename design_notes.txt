@@ -24,4 +24,84 @@ commands.
  - allows them to script sequence changes
  
 
-   
+This is how to rework it:
+ 
+mainthread calls an audioTrack function "trigger" periodically, with interval as an index
+trigger returns 0 if nothing plays in this interval (used for display)
+audiotrack trigger function wakes up its own condition variable, allowing thread to run
+ 
+This has the benefit of triggering everything in rapid succession, meaning main isn't blocked, makes the mutexes look nicer.
+ 
+--------
+More design thoughts:
+ 
+Global: 
+ - beats per bar (default 4, maximum 16, minimum 2)
+ - pulses per beat, i.e resolution, also known as pulse per quarter note (PPQ). This should be up to 96, let’s start with 16 because it covers the following:
+ 
+crotchet (one beat)
+quaver = 1/8th (half a beat)
+semi quaver= 1/16th (quarter a beat)
+demisemiquaver = 1/32 (eighth of a beat)
+hemidemisemiquaver = 1/64 (16th of a beat)
+ 
+Each of these measures implies the duration of the note. So we need to check that sdl_mixer allows us to only play a portion of the note. –
+-          del (delete a beat)
+er@outlook.com
+To: tjshearer@outlook.com
+Subject: termseq stuff
+Date: Fri, 19 Jun 2015 11:41:44 -0400
+
+This is how to rework it:
+ 
+mainthread calls an audioTrack function "trigger" periodically, with interval as an index
+trigger returns 0 if nothing plays in this interval (used for display)
+audiotrack trigger function wakes up its own condition variable, allowing thread to run
+ 
+This has the benefit of triggering everything in rapid succession, meaning main isn't blocked, makes the mutexes look nicer.
+ 
+--------
+More design thoughts:
+ 
+Global: 
+ - beats per bar (default 4, maximum 16, minimum 2)
+ - pulses per beat, i.e resolution, also known as pulse per quarter note (PPQ). This should be up to 96, let’s start with 16 because it covers the following:
+ 
+crotchet (one beat)
+quaver = 1/8th (half a beat)
+semi quaver= 1/16th (quarter a beat)
+demisemiquaver = 1/32 (eighth of a beat)
+hemidemisemiquaver = 1/64 (16th of a beat)
+ 
+Each of these measures implies the duration of the note. So we need to check that sdl_mixer allows us to only play a portion of the note. –
+-          reset (clear everything)
+ 
+set/del options:
+l (loop index)
+b (beat)
+o (offset)
+m (measure)
+d (display)
+ 
+seqctl track1 instrument <filename>                       (track one, set instrument)
+seqctl set l1 b1 mcrotchet                                            (inserts a crotchet at beat 1, in loop 1)
+seqctl set l1 b2 oquaver mcrotchet                          (inserts a crotchet in beat 2, after a gap of one quaver
+ 
+now when this is interpreted, we’ll figure out the offset in the pulse array, and put a value in there. we can store an enum in the array so we know what type of beat is in there. Fill following measures with an “f” character according to the length of the beat selected. This will allow us to reject overlapping beats (for example, if someone tries to put two crotchets in the space of a single beat.
+ 
+ 
+Iterate through a loop, going over the pulses.
+If we hit a pulse, we set it playing, set play flag, set callback flag to clear play flag (todo mutex protect)
+Otherwise, we look at the next pulse – if something is scheduled to play, check play flag. If playing, expire it
+ 
+ 
+Advanced stuff:
+Later on we can add human elements – slop for example. We can add a degree of laziness to a snare beat, shift it along a bit.
+     
+ 
+ 
+ 
+https://www.libsdl.org/projects/SDL_mixer/docs/SDL_mixer.pdf
+ 
+ 
+ 
