@@ -5,16 +5,19 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 CPP_SRCS += \
 ../src/audioTrack.cpp \
+../src/eventListener.cpp \
 ../src/termSeq.cpp \
 ../src/thread.cpp 
 
 OBJS += \
 ./src/audioTrack.o \
+./src/eventListener.o \
 ./src/termSeq.o \
 ./src/thread.o 
 
 CPP_DEPS += \
 ./src/audioTrack.d \
+./src/eventListener.d \
 ./src/termSeq.d \
 ./src/thread.d 
 

@@ -8,63 +8,37 @@
 
 #include "termSeq.h"
 #include "audioTrack.h"
+#include "eventListener.h"
+
 #include <iostream>
 #include <csignal>
 #include <linux/types.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mixer.h>
+#include <sys/time.h>
+#include <iostream>
+#include <pthread.h>
+
 using namespace std;
 
 #define MUS_PATH "/usr/share/hydrogen/data/drumkits/TR808909/909_clap.wav"
-#define MUS_PATH2 "/usr/share/hydrogen/data/drumkits/TR808909/909_rim.wav"
-/*
-// prototype for our audio callback
-// see the implementation for more informatio
-void my_audio_callback(void *userdata, Uint8 *stream, int len);
+#define MUS_PATH2 "/usr/share/hydrogen/data/drumkits/TR808909/808_sd.wav"
+#define MUS_PATH3 "/usr/share/hydrogen/data/drumkits/TR808909/909_bd.wav"
 
-// variable declarations
-static Uint8 *audio_pos; // global pointer to the audio buffer to be played
-static Uint32 audio_len; // remaining length of the sample we have to play
-
-// audio callback function
-// here you have to copy the data of your audio buffer into the
-// requesting audio buffer (stream)
-// you should only copy as much as the requested length (len)
-void my_audio_callback(void *userdata, Uint8 *stream, int len) {
-
-	if (audio_len ==0)
-		return;
-
-	len = ( len > audio_len ? audio_len : len );
-	//SDL_memcpy (stream, audio_pos, len); 					// simply copy from one buffer into the other
-	SDL_MixAudio(stream, audio_pos, len, SDL_MIX_MAXVOLUME);// mix from one buffer into another
-
-	audio_pos += len;
-	audio_len -= len;
-}
-*/
-#include <pthread.h>
-
-int ready;
-
-pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-pthread_cond_t cv2 = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t mutex2 = PTHREAD_MUTEX_INITIALIZER;
 
 int main() {
-	ready = 0;
 
-	if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) != 0) {
+	EventListener myEvents;
+
+	if (SDL_Init(SDL_INIT_AUDIO) != 0) {
 		fprintf(stderr, "Unable to initialize SDL: %s\n", SDL_GetError());
 		return 1;
 	}
 
-	int audio_rate = 22050;
+	int audio_rate = 44100;
 	Uint16 audio_format = AUDIO_S16SYS;
 	int audio_channels = 2;
-	int audio_buffers = 4096;
+	int audio_buffers = 1024;
 
 	if(Mix_OpenAudio(audio_rate, audio_format, audio_channels, audio_buffers) != 0) {
 		fprintf(stderr, "Unable to initialize audio: %s\n", Mix_GetError());
@@ -76,16 +50,13 @@ int main() {
 	for (int i=0; i<MAX_TRACKS; i++) {
 		track[i] = new AudioTrack();
 		track[i]->setTrack(i);
-		track[i]->setReady(&ready);
+		track[i]->setLength(4, 96);
 	}
 
 //	Mix_Chunk *sound1 = NULL;
 	char *file = MUS_PATH;
-	track[0]->setInterval(200000);
 	track[0]->setLoops(48);
 	track[0]->setSound(file);
-	track[0]->setMutex(&mutex);
-	track[0]->setCondVar(&cv);
 	track[0]->start();
 	/*if(sound1 == NULL) {
 		fprintf(stderr, "Unable to load WAV file: %s\n", Mix_GetError());
@@ -93,12 +64,15 @@ int main() {
 	*/
 
 	char *file2 = MUS_PATH2;
-	track[1]->setInterval(400000);
 	track[1]->setLoops(24);
 	track[1]->setSound(file2);
-	track[1]->setMutex(&mutex2);
-	track[1]->setCondVar(&cv2);
 	track[1]->start();
+
+
+	char *file3 = MUS_PATH3;
+		track[1]->setLoops(24);
+		track[1]->setSound(file3);
+		track[1]->start();
 
 
 //	Mix_Chunk *sound2 = NULL;
@@ -186,24 +160,47 @@ int main() {
 
 */
 
-	for(int i = 0 ; i < 10 ; i++) {
+	//experimental setting of beat data
+	track[0]->setBeat(1);
+	track[0]->setBeat(3);
 
-	    sleep(1);
-		printf("main thread waking others\n");
+	track[2]->setBeat(1);
+	//track[2]->setBeat(3);
 
-		   pthread_mutex_lock(&mutex);
-		   ready++;
-		    pthread_cond_signal(&cv);
-		    pthread_mutex_unlock(&mutex);
+	track[1]->setBeat(0);
+	track[1]->setBeat(1);
+	track[1]->setBeat(2);
+	track[1]->setBeat(3);
 
+//	track[0]->dumpTrackData();
+//	track[1]->dumpTrackData();
 
-			   pthread_mutex_lock(&mutex2);
-			   ready++;
-			    pthread_cond_signal(&cv2);
-			    pthread_mutex_unlock(&mutex2);
+	myEvents.start();
+
+	//need to wait for ready signal
+	usleep(5000);
+
+	struct timeval start_time;
+    struct timeval end_time;
+
+	for( int i = 0 ; i < 1 ; i++) {
+		//for( int i = 0 ; i < 4 ; i++) {
+		for(int j = 0 ; j < 96*4 ; j++) {
+			gettimeofday(&start_time, NULL);
+//			printf("main thread waking others\n");
+			track[0]->trigger(j);
+			track[1]->trigger(j);
+			track[2]->trigger(j);
+			SDL_Delay(5);
+			 gettimeofday(&end_time, NULL);
+
+		//	    float duration = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) * 1E-6;
+
+		//	    cout << "duration: " << duration << "s" << endl;
+		}
 	}
 
-    //SDL_Delay(8000);
+
 
 	for (int i=0; i<MAX_TRACKS; i++) {
 		track[i]->detach();

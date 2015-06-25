@@ -60,6 +60,8 @@ audiotrack trigger function wakes up its own condition variable, allowing thread
  
 This has the benefit of triggering everything in rapid succession, meaning main isn't blocked, makes the mutexes look nicer.
  
+ ^^^^^DONE^^^^^
+ 
 --------
 More design thoughts:
  

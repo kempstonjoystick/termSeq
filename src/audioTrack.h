@@ -20,26 +20,49 @@
 
 //NEXT fix timing, this one all varies depending on the length of the track.
 
-#define MAX_TRACKS 2
+#define MAX_TRACKS 3
 
 class AudioTrack : public Thread
 {
   public:
-	AudioTrack( void ) : ready ( NULL ), configured(false), sound( NULL ), trackNo( -1 ),
-		go( 0 ), mutex( NULL ), cv ( NULL ), loops( 0 ), channel( 0 )
-	{
-	}
+	AudioTrack( void );
 	~AudioTrack( void ) {
 		//free the MixChunk
 		if(sound != NULL)
 			Mix_FreeChunk(sound);
+		if(trackData)
+			free(trackData);
 	}
 	void setTrack(int16_t track) { trackNo = track; }
 	void setLoops(int16_t lps) { loops = lps; }
-	void setReady(int * brek) { ready = brek; }
-	void setMutex(pthread_mutex_t *mut) { mutex = mut; }
-	void setCondVar(pthread_cond_t *c) { cv = c; }
-	void setInterval(float ival) { interval = ival; }
+	void setBeat(int16_t b) {
+		trackData[b*pulses] = 1;
+	}
+	void dumpTrackData(void) {
+		if(trackData == NULL) {
+			printf("Track %d not initialized\n", trackNo);
+		}
+		for (int i = 0 ; i < 96; i++) {
+			printf("Track data for track %d", trackNo);
+			printf("	pulse %02d = %d\n",i, trackData[i]);
+		}
+	}
+
+	int16_t pulsesPerBar(void){
+		return (beats * pulses);
+	}
+	void setLength(int16_t beatz, int16_t pulses_per_beat) {
+		//TODO limit beats/pulses here
+		beats = beatz;
+		pulses = pulses_per_beat;
+		trackData = (unsigned char *) malloc( pulsesPerBar() * sizeof(unsigned char) );
+		memset(trackData, 0, pulsesPerBar()*sizeof(unsigned char));
+
+//		printf("Track %d set total trackDataSize to %d bytes\n", trackNo,
+//				pulsesPerBar()*sizeof(unsigned char) );
+	}
+
+	void trigger(int global_ival);
 	void setSound(char *file) {
 		sound=Mix_LoadWAV(file);
 		if(sound == NULL) {
@@ -50,75 +73,25 @@ class AudioTrack : public Thread
 			configured = true;
 		}
 	}
-    void *run() {
-    	int local_ready;
-    	while ( 1 ) {
-            pthread_mutex_lock(mutex);
-            local_ready = *ready;
-loop:
-				printf("Track %d waiting...\n", trackNo);
-                // wait as long as there is no data available and a shutdown
-                // has not beeen signalled
-                pthread_cond_wait(cv, mutex);
-                if(*ready == local_ready)  {
-                	printf("Track %d spurious wake\n", trackNo);
-                	goto loop;
-                }
-                local_ready = *ready;
-                pthread_mutex_unlock(mutex);
-                printf("Track %d woken, local_ready = %d...\n", trackNo, local_ready);
+    void *run(void);
 
-                if(configured) {
-					//play sound here
-					channel = Mix_PlayChannel(trackNo, sound, 0);
-					if(channel == -1) {
-						fprintf(stderr, "Unable to play WAV file: %s\n", Mix_GetError());
-					}
-					printf("Track %d - Play done\n", trackNo);
-				}
-				else {
-					printf("No sound defined, not playing\n");
-				}
-
-                goto loop;
-
-    	}
-    		/*
-    	}
-        for (int i = 0; i < loops; i++) {
-        	printf("Track %d playing - iteration %d\n", trackNo, i+1);
-        	if(configured) {
-        		//play sound here
-        		channel = Mix_PlayChannel(trackNo, sound, 0);
-        		if(channel == -1) {
-					fprintf(stderr, "Unable to play WAV file: %s\n", Mix_GetError());
-				}
-        		printf("Track %d - Play done\n", trackNo);
-        	}
-        	else {
-        		printf("No sound defined, not playing\n");
-        	}
-            usleep(interval);
-        }
-        printf("thread done %lu\n", (long unsigned int)self());
-        return NULL;
-        */
-    }
-    int go;
   private:
-    int *ready;
-
+    uint16_t beats;				//beats per bar
+    int16_t pulses; 			//pulses per beat
+    unsigned char *trackData;	//start off just using intervals, we can bump the dimensions later, i.e.
+    							//***trackData (which would be trackdata[][].
+    							//****trackData (trackdata[][][])
+    pthread_cond_t cv;
+    pthread_mutex_t mutex;
     //variables
     bool configured;
     Mix_Chunk* sound;		//the sound assigned to this track
     int16_t trackNo;		//this is the track/channel number, 0 through MAX_TRACKS-1
     int16_t loops;		//number of iterations
     int channel;
-    pthread_mutex_t *mutex;
-    pthread_cond_t *cv;
 
 //    int16_t volume;
-    float interval;		//this will be some enum, describes how many intervals in a bar for this track
+    int32_t interval;		//this will be some enum, describes how many intervals in a bar for this track
 
 };
 
