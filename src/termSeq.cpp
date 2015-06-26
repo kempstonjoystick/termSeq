@@ -25,10 +25,18 @@ using namespace std;
 #define MUS_PATH2 "/usr/share/hydrogen/data/drumkits/TR808909/808_sd.wav"
 #define MUS_PATH3 "/usr/share/hydrogen/data/drumkits/TR808909/909_bd.wav"
 
+int message_handler(char * message) {
+
+	if(message)
+		printf("termSeq received message %s\n", message);
+
+	return 0;
+}
 
 int main() {
 
 	EventListener myEvents;
+	myEvents.messageCallback = message_handler;
 
 	if (SDL_Init(SDL_INIT_AUDIO) != 0) {
 		fprintf(stderr, "Unable to initialize SDL: %s\n", SDL_GetError());
@@ -84,81 +92,7 @@ int main() {
  	 */
 
 	TRACE(("thread launch done...\n"));
-/*
-	int channel1, channel2;
 
-	channel1 = Mix_PlayChannel(-1, sound1, 0);
-	if(channel1 == -1) {
-		fprintf(stderr, "Unable to play WAV file: %s\n", Mix_GetError());
-	}
-
-	channel2 = Mix_PlayChannel(-1, sound2, 0);
-	if(channel1 == -1) {
-		fprintf(stderr, "Unable to play WAV file: %s\n", Mix_GetError());
-	}
-
-	while(Mix_Playing(channel1) ||  Mix_Playing(channel2));
-
-	Mix_FreeChunk(sound1);
-	Mix_FreeChunk(sound2);
-*/
-//	Mix_CloseAudio();
-
-
-/*
-	TRACE(("Initializing libSDL\n"));
-
-    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) != 0) {
-        fprintf(stderr,
-                "\nUnable to initialize SDL:  %s\n",
-                SDL_GetError()
-               );
-        return 1;
-    }
-    // local variables
-	static Uint32 wav_length; // length of our sample
-	static Uint8 *wav_buffer; // buffer containing our audio file
-	static SDL_AudioSpec wav_spec; // the specs of our piece of music
-
-	// Load the WAV
-	// the specs, length and buffer of our wav are filled
-	if( SDL_LoadWAV(MUS_PATH, &wav_spec, &wav_buffer, &wav_length) == NULL ){
-		printf("Failed to load %s\n",MUS_PATH);
-	  return 1;
-	}
-	// set the callback function
-	wav_spec.callback = my_audio_callback;
-	wav_spec.userdata = NULL;
-	// set our global static variables
-	audio_pos = wav_buffer; // copy sound buffer
-	audio_len = wav_length; // copy file length
-
-	printf("File ready\n");
-
-	// Open the audio device
-	if ( SDL_OpenAudio(&wav_spec, NULL) < 0 ){
-	  fprintf(stderr, "Couldn't open audio: %s\n", SDL_GetError());
-	  exit(-1);
-	}
-
-	// Start playing
-	printf("Starting to play\n");
-	SDL_PauseAudio(0);
-
-	// wait until we're don't playing
-	while ( audio_len > 0 ) {
-		SDL_Delay(100);
-	}
-
-	printf("Playing done\n");
-
-	// shut everything down
-	SDL_CloseAudio();
-	SDL_FreeWAV(wav_buffer);
-
-    atexit(SDL_Quit);
-
-*/
 
 	//experimental setting of beat data
 	track[0]->setBeat(1);
@@ -172,9 +106,6 @@ int main() {
 	track[1]->setBeat(2);
 	track[1]->setBeat(3);
 
-//	track[0]->dumpTrackData();
-//	track[1]->dumpTrackData();
-
 	myEvents.start();
 
 	//need to wait for ready signal
@@ -183,8 +114,8 @@ int main() {
 	struct timeval start_time;
     struct timeval end_time;
 
-	for( int i = 0 ; i < 1 ; i++) {
-		//for( int i = 0 ; i < 4 ; i++) {
+	//for( int i = 0 ; i < 1 ; i++) {
+	for( int i = 0 ; i < 4 ; i++) {
 		for(int j = 0 ; j < 96*4 ; j++) {
 			gettimeofday(&start_time, NULL);
 //			printf("main thread waking others\n");

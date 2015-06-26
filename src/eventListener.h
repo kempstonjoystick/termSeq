@@ -32,13 +32,14 @@ class EventListener : public Thread
 
 	}
 	void *run(void);
-	void setCallback(void *) {
 
-	}			//tell the thread what to call when we have an event to process
+	typedef int (*MessageFunc)(char *);  // Defines a function pointer type pointing to a void function which doesn't take any parameter.
+    MessageFunc messageCallback;  //  Actually defines a member variable of this type.
+
 
   private:
-	void * callback;
 	mqd_t msgq_id;
+	int * callback;
 	 pid_t my_pid;
 };
 
