@@ -33,7 +33,7 @@ class EventListener : public Thread
 	}
 	void *run(void);
 
-	typedef int (*MessageFunc)(char *);  // Defines a function pointer type pointing to a void function which doesn't take any parameter.
+	typedef int (*MessageFunc)(int, char **);  // Defines a function pointer type pointing to a void function which doesn't take any parameter.
     MessageFunc messageCallback;  //  Actually defines a member variable of this type.
 
 

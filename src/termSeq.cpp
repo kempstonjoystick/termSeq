@@ -25,10 +25,21 @@ using namespace std;
 #define MUS_PATH2 "/usr/share/hydrogen/data/drumkits/TR808909/808_sd.wav"
 #define MUS_PATH3 "/usr/share/hydrogen/data/drumkits/TR808909/909_bd.wav"
 
-int message_handler(char * message) {
+int message_handler(int argc, char **argv) {
+	int i;
+	printf("termSeq received message");
+	for (i = 0 ; i < argc; i++)
+		printf("%s\n", argv[i]);
 
-	if(message)
-		printf("termSeq received message %s\n", message);
+	//Will need to convert the string into substrings, an array of pointers similar to argc/argv
+
+	//validate first command - should be track and track number
+
+	//Use the track index, call a next level validation:
+	//track[0].validate(argc, *argv[]);
+
+	//call the track method to process command
+	//track[0].validate(argc, *argv[]);
 
 	return 0;
 }

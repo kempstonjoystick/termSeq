@@ -57,11 +57,36 @@ void *EventListener::run(void) {
 			msgsz = mq_receive(msgq_id, msgcontent, 512+1, &sender);
 			if (msgsz == -1) {
 				perror("In mq_receive()");
-				exit(1);
 			}
-			//printf("Received message (%d bytes) from %d: %s\n", msgsz, sender, msgcontent);
-			if(messageCallback)
-				messageCallback(msgcontent);
+			else if(strlen(msgcontent) == 0) {
+				printf("received empty message\n");
+			}
+			else {
+				//printf("Received message (%d bytes) from %d: %s\n", msgsz, sender, msgcontent);
+				if(messageCallback) {
+					int i = 0;
+					int argc;
+					char *argv[20];
+
+					argv[i++] = msgcontent;
+
+					char * pch=strchr(msgcontent,' ');
+					while (pch!=NULL)
+					{
+					    printf ("found space at at %d\n",pch+1);
+					    argv[i++] = pch+1;
+					    pch = '\0'; //replace the space with a null
+
+					    pch=strchr(pch+1,'s');
+					    if (i >=20)
+					    	break;
+					}
+
+
+					messageCallback(argc, argv);
+
+				}
+			}
 	    }
 	    /* closing the queue    --  mq_close() */
 	    mq_close(msgq_id);

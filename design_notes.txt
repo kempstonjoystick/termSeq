@@ -69,6 +69,13 @@ Global:
  - beats per bar (default 4, maximum 16, minimum 2)
  - pulses per beat, i.e resolution, also known as pulse per quarter note (PPQ). This should be up to 96, let’s start with 16 because it covers the following:
  
+ ^^^^^DONE^^^^^
+ 
+ Command handling: When received by the engine, parse the fields and run through a validator:
+  - Field 1 - track
+  -	Field 2 - track number (atoi)
+  - Field 3 - instrument	
+ 
 crotchet (one beat)
 quaver = 1/8th (half a beat)
 semi quaver= 1/16th (quarter a beat)
@@ -85,9 +92,10 @@ o (offset)
 m (measure)
 d (display)
  
-seqctl track1 instrument <filename>                       (track one, set instrument)
-seqctl set l1 b1 mcrotchet                                            (inserts a crotchet at beat 1, in loop 1)
-seqctl set l1 b2 oquaver mcrotchet                          (inserts a crotchet in beat 2, after a gap of one quaver
+seqctl track 1 instrument <filename>                       (track one, set instrument)
+seqctl track 1 set l1 b1 mcrotchet                         (inserts a crotchet at beat 1, in loop 1)
+seqctl track 1 set l1 b2 oquaver mcrotchet                 (inserts a crotchet in beat 2, after a gap of one quaver
+seqctl track 1 fill l1 crotchet 
  
 now when this is interpreted, we’ll figure out the offset in the pulse array, and put a value in there. we can store an enum in the array so we know what type of beat is in there. Fill following measures with an “f” character according to the length of the beat selected. This will allow us to reject overlapping beats (for example, if someone tries to put two crotchets in the space of a single beat.
  
