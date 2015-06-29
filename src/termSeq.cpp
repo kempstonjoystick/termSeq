@@ -25,23 +25,44 @@ using namespace std;
 #define MUS_PATH2 "/usr/share/hydrogen/data/drumkits/TR808909/808_sd.wav"
 #define MUS_PATH3 "/usr/share/hydrogen/data/drumkits/TR808909/909_bd.wav"
 
-int message_handler(int argc, char **argv) {
-	int i;
-	printf("termSeq received message");
-	for (i = 0 ; i < argc; i++)
-		printf("%s\n", argv[i]);
+enum messageHandlerError {
+	MSGHDLR_NOERR=0,
+	MSGHDLR_TOOFEWARGS,
+	MSGHDLR_INVALIDARG1,
+	MSGHDLR_INVALIDARG2,
+	MSGHDLR_INVALIDSUBCOMMAND
+};
+//TODO const char array which describes each failure above.
 
-	//Will need to convert the string into substrings, an array of pointers similar to argc/argv
+
+//This class is intended to be threadsafe, so calls from message_handler and the main thread
+//shouldnt cause any problems.
+AudioTrack *track[8];
+
+int message_handler(int argc, char **argv) {
+	char * pEnd;
+
+	//check 1 - argument count
+	if(argc < 2)
+		return MSGHDLR_TOOFEWARGS;
 
 	//validate first command - should be track and track number
+	if(strcmp(argv[0], "track") != 0)
+		return MSGHDLR_INVALIDARG1;
+
+	//validate the track index
+	int trackIdx = strtol(argv[1], &pEnd, 10);
+	if( (trackIdx <=0) || (trackIdx > MAX_TRACKS) )
+		return MSGHDLR_INVALIDARG2;
 
 	//Use the track index, call a next level validation:
-	//track[0].validate(argc, *argv[]);
+	if (track[trackIdx-1]->validateCommand(argc-2, &argv[2]) < 0)
+		return MSGHDLR_INVALIDSUBCOMMAND;
 
 	//call the track method to process command
-	//track[0].validate(argc, *argv[]);
+	track[trackIdx-1]->runCommand(argc-2, &argv[2]);
 
-	return 0;
+	return MSGHDLR_TOOFEWARGS;
 }
 
 int main() {
@@ -63,8 +84,6 @@ int main() {
 		fprintf(stderr, "Unable to initialize audio: %s\n", Mix_GetError());
 		exit(1);
 	}
-
-	AudioTrack *track[8];
 
 	for (int i=0; i<MAX_TRACKS; i++) {
 		track[i] = new AudioTrack();

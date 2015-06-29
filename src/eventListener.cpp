@@ -62,26 +62,23 @@ void *EventListener::run(void) {
 				printf("received empty message\n");
 			}
 			else {
-				//printf("Received message (%d bytes) from %d: %s\n", msgsz, sender, msgcontent);
+				// break the commands into an argc/*argv[] format
 				if(messageCallback) {
-					int i = 0;
-					int argc;
+					unsigned int i = 0;
+					int argc = 0;
 					char *argv[20];
+					unsigned int iterlimit = strlen(msgcontent); //because we insert nulls as we go
 
-					argv[i++] = msgcontent;
+					if(msgcontent[i] != ' ')
+							argv[argc++] = &msgcontent[i++];
 
-					char * pch=strchr(msgcontent,' ');
-					while (pch!=NULL)
+					for(; i < iterlimit-1; i++)
 					{
-					    printf ("found space at at %d\n",pch+1);
-					    argv[i++] = pch+1;
-					    pch = '\0'; //replace the space with a null
-
-					    pch=strchr(pch+1,'s');
-					    if (i >=20)
-					    	break;
+						if( (msgcontent[i] ==  ' ') && (msgcontent[i+1] !=  ' ')) {
+							msgcontent[i] = '\0';
+							argv[argc++] = &msgcontent[i+1];
+						}
 					}
-
 
 					messageCallback(argc, argv);
 
