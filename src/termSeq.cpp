@@ -9,6 +9,7 @@
 #include "termSeq.h"
 #include "audioTrack.h"
 #include "eventListener.h"
+#include "debug.h"
 
 #include <iostream>
 #include <csignal>
@@ -21,9 +22,11 @@
 
 using namespace std;
 
+/*
 #define MUS_PATH "/usr/share/hydrogen/data/drumkits/TR808909/909_clap.wav"
 #define MUS_PATH2 "/usr/share/hydrogen/data/drumkits/TR808909/808_sd.wav"
 #define MUS_PATH3 "/usr/share/hydrogen/data/drumkits/TR808909/909_bd.wav"
+*/
 
 enum messageHandlerError {
 	MSGHDLR_NOERR=0,
@@ -38,17 +41,57 @@ enum messageHandlerError {
 //This class is intended to be threadsafe, so calls from message_handler and the main thread
 //shouldnt cause any problems.
 AudioTrack *track[8];
+static int beats = 0;
+static int pulses = 0;
+
+static bool playing = false;
 
 int message_handler(int argc, char **argv) {
 	char * pEnd;
 
-	//check 1 - argument count
-	if(argc < 2)
-		return MSGHDLR_TOOFEWARGS;
+	//command: structure <beats per bar> <pulses per beat>
+	if(strcmp(argv[0], "structure") == 0) {
+		beats = atoi(argv[1]);
+		pulses = atoi(argv[2]);
+
+		if(argc != 3)
+			return MSGHDLR_TOOFEWARGS;;
+		TRACE(("Setting structure: %d beats, %d pulses per beat\n", beats, pulses));
+
+		for (int i=0; i<MAX_TRACKS; i++) {
+			track[i]->setLength(beats, pulses);
+			track[i]->start();
+		}
+	}
+
+	//Transport commands, play/pause etc. start with play
+	if(strcmp(argv[0], "play") == 0) {
+		TRACE(("Got play command\n"));
+		if(playing)
+			return -1;
+		TRACE(("Playing\n"));
+		playing = true;
+		return 0;
+	}
+
+	if(strcmp(argv[0], "pause") == 0) {
+		TRACE(("Got pause command\n"));
+		if(!playing)
+			return -1;
+		TRACE(("pausing\n"));
+		playing = false;
+		return 0;
+	}
+
+	//TODO - we need loop length command - temporary, counts how many bars we play before we stop
 
 	//validate first command - should be track and track number
 	if(strcmp(argv[0], "track") != 0)
 		return MSGHDLR_INVALIDARG1;
+
+	//Track command argument count
+	if(argc < 2)
+		return MSGHDLR_TOOFEWARGS;
 
 	//validate the track index
 	int trackIdx = strtol(argv[1], &pEnd, 10);
@@ -85,33 +128,28 @@ int main() {
 		exit(1);
 	}
 
+	//populate our track array
 	for (int i=0; i<MAX_TRACKS; i++) {
-		track[i] = new AudioTrack();
-		track[i]->setTrack(i);
-		track[i]->setLength(4, 96);
-	}
+			track[i] = new AudioTrack(i);
+		}
 
 //	Mix_Chunk *sound1 = NULL;
-	char *file = MUS_PATH;
-	track[0]->setLoops(48);
-	track[0]->setSound(file);
-	track[0]->start();
+//	char *file = MUS_PATH;
+//	track[0]->setSound(file);
+//	track[0]->start();
 	/*if(sound1 == NULL) {
 		fprintf(stderr, "Unable to load WAV file: %s\n", Mix_GetError());
 	}
 	*/
 
-	char *file2 = MUS_PATH2;
-	track[1]->setLoops(24);
-	track[1]->setSound(file2);
-	track[1]->start();
+//	char *file2 = MUS_PATH2;
+//	track[1]->setSound(file2);
+//	track[1]->start();
 
 
-	char *file3 = MUS_PATH3;
-		track[1]->setLoops(24);
-		track[1]->setSound(file3);
-		track[1]->start();
-
+//	char *file3 = MUS_PATH3;
+//		track[1]->setSound(file3);
+//		track[1]->start();
 
 //	Mix_Chunk *sound2 = NULL;
 	/*
@@ -121,11 +159,11 @@ int main() {
 	}
  	 */
 
-	TRACE(("thread launch done...\n"));
+//	TRACE(("thread launch done...\n"));
 
 
 	//experimental setting of beat data
-	track[0]->setBeat(1);
+/*	track[0]->setBeat(1);
 	track[0]->setBeat(3);
 
 	track[2]->setBeat(1);
@@ -135,8 +173,8 @@ int main() {
 	track[1]->setBeat(1);
 	track[1]->setBeat(2);
 	track[1]->setBeat(3);
-
-	myEvents.start();
+*/
+	myEvents.start(); //has to come
 
 	//need to wait for ready signal
 	usleep(5000);
@@ -144,21 +182,29 @@ int main() {
 	struct timeval start_time;
     struct timeval end_time;
 
-	//for( int i = 0 ; i < 1 ; i++) {
-	for( int i = 0 ; i < 4 ; i++) {
-		for(int j = 0 ; j < 96*4 ; j++) {
-			gettimeofday(&start_time, NULL);
-//			printf("main thread waking others\n");
-			track[0]->trigger(j);
-			track[1]->trigger(j);
-			track[2]->trigger(j);
-			SDL_Delay(5);
-			 gettimeofday(&end_time, NULL);
+    //TODO listen for kill signal
+    while ( 1 ) {
+    	int loop = 0; //just to get us started
 
-		//	    float duration = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) * 1E-6;
-
-		//	    cout << "duration: " << duration << "s" << endl;
+		while(!playing) {
+			usleep(2000);
 		}
+
+		//for( int i = 0 ; i < 1 ; i++) {
+		//for( int i = 0 ; i < 10 ; i++) { //loops
+			for(int j = 0 ; j < pulses*beats ; j++) {
+				gettimeofday(&start_time, NULL);
+	//			printf("main thread waking others\n");
+				track[0]->trigger(j, loop);
+				track[1]->trigger(j, loop);
+				track[2]->trigger(j, loop);
+				SDL_Delay(5);
+				 gettimeofday(&end_time, NULL);
+
+			//	    float duration = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) * 1E-6;
+
+			//	    cout << "duration: " << duration << "s" << endl;
+			}
 	}
 
 
