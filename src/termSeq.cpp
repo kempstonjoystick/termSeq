@@ -184,7 +184,7 @@ int main() {
 
     //TODO listen for kill signal
     while ( 1 ) {
-    	int loop = 0; //just to get us started
+    	int loop = 1; //just to get us started
 
 		while(!playing) {
 			usleep(2000);

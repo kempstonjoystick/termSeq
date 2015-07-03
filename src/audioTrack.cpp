@@ -1,12 +1,13 @@
-
 #include "audioTrack.h"
 
 #include <sys/time.h>
 #include <iostream>
 
-AudioTrack::AudioTrack( int idx ) :
-		beats(0), pulses(0), trackData( NULL), fileConfigured(false), beatsConfigured(false),
-		sound( NULL ), loops( 0 ), channel( 0 ), interval(-1), loop(-1) {
+AudioTrack::AudioTrack(int idx) :
+		beats(0), pulses(0), trackData( NULL), fileConfigured(false), beatsConfigured(
+				false), lengthConfigured(false), sound( NULL), loops(0), channel(
+				0), interval(-1), loop(-1), semibreve(0), minim(0), crotchet(0), quaver(
+				0), semiquaver(0), demisemiquaver(0), hemidemisemiquaver(0) {
 
 	//TODO check index is <= MAX_TRACKS
 	trackNo = idx;
@@ -19,8 +20,8 @@ AudioTrack::AudioTrack( int idx ) :
 
 	//initialize our command interface
 
-	commandMap.insert( std::make_pair( "beat", &AudioTrack::commandSetBeat ));
-	commandMap.insert( std::make_pair( "file", &AudioTrack::commandSetFile ));
+	commandMap.insert(std::make_pair("beat", &AudioTrack::commandSetBeat));
+	commandMap.insert(std::make_pair("file", &AudioTrack::commandSetFile));
 //	fmap.insert( std::make_pair( "g", &AudioTrack::g ));
 }
 
@@ -30,88 +31,91 @@ AudioTrack::AudioTrack( int idx ) :
 
 void *AudioTrack::run(void) {
 	struct timeval start_time;
-    struct timeval end_time;
+	struct timeval end_time;
 
 	gettimeofday(&start_time, NULL);
 
 	int local_interval = -1;
 	int local_loop = -1;
-    	while ( 1 ) {
-            pthread_mutex_lock(&trigger_mutex);
-loop:
-                // wait as long as there is no data available and a shutdown
-                // has not beeen signalled
-                pthread_cond_wait(&trigger_cv, &trigger_mutex);
-                if(interval == local_interval)  {
-                	printf("Track %d spurious wake\n", trackNo);
-                	goto loop;
-                }
-                local_interval = interval;
-                local_interval = loop;
-                pthread_mutex_unlock(&trigger_mutex);
+	while (1) {
+		pthread_mutex_lock(&trigger_mutex);
+		loop:
+		// wait as long as there is no data available and a shutdown
+		// has not beeen signalled
+		pthread_cond_wait(&trigger_cv, &trigger_mutex);
+		if (interval == local_interval) {
+			printf("Track %d spurious wake\n", trackNo);
+			goto loop;
+		}
+		local_interval = interval;
+		local_loop = loop;
+		pthread_mutex_unlock(&trigger_mutex);
 
-				//play sound here
-				if(trackData[local_loop][local_interval]) {
-					gettimeofday(&end_time, NULL);
+		//play sound here
+		if ((trackData[local_loop][local_interval] != BEAT_FILL)
+				&& (trackData[local_loop][local_interval] != BEAT_EMPTY)) {
+			printf("Track %d playing interval %d\n", trackNo, local_interval);
+			gettimeofday(&end_time, NULL);
 
-					float duration = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) * 1E-6;
+			float duration = (end_time.tv_sec - start_time.tv_sec)
+					+ (end_time.tv_usec - start_time.tv_usec) * 1E-6;
 
-					if(trackNo == 0)
-						cout << "Track duration between triggers: " << duration << "s" << endl;
-					start_time = end_time;
+			if (trackNo == 0)
+				cout << "Track duration between triggers: " << duration << "s"
+						<< endl;
+			start_time = end_time;
 
-					channel = Mix_PlayChannel(trackNo, sound, 0);
-					if(channel == -1) {
-						fprintf(stderr, "Unable to play WAV file: %s\n", Mix_GetError());
-					}
-				}
+			channel = Mix_PlayChannel(trackNo, sound, 0);
+			if (channel == -1) {
+				fprintf(stderr, "Unable to play WAV file: %s\n",
+						Mix_GetError());
+			}
+		}
 
-                goto loop;
+		goto loop;
 
-    	}
-    		/*
-    	}
-        for (int i = 0; i < loops; i++) {
-        	printf("Track %d playing - iteration %d\n", trackNo, i+1);
-        	if(configured) {
-        		//play sound here
-        		channel = Mix_PlayChannel(trackNo, sound, 0);
-        		if(channel == -1) {
-					fprintf(stderr, "Unable to play WAV file: %s\n", Mix_GetError());
-				}
-        		printf("Track %d - Play done\n", trackNo);
-        	}
-        	else {
-        		printf("No sound defined, not playing\n");
-        	}
-            usleep(interval);
-        }
-        printf("thread done %lu\n", (long unsigned int)self());
-        return NULL;
-        */
+	}
+	/*
+	 }
+	 for (int i = 0; i < loops; i++) {
+	 printf("Track %d playing - iteration %d\n", trackNo, i+1);
+	 if(configured) {
+	 //play sound here
+	 channel = Mix_PlayChannel(trackNo, sound, 0);
+	 if(channel == -1) {
+	 fprintf(stderr, "Unable to play WAV file: %s\n", Mix_GetError());
+	 }
+	 printf("Track %d - Play done\n", trackNo);
+	 }
+	 else {
+	 printf("No sound defined, not playing\n");
+	 }
+	 usleep(interval);
+	 }
+	 printf("thread done %lu\n", (long unsigned int)self());
+	 return NULL;
+	 */
 }
 
 //TODO hand this an or'ed loop, interval, pulse
 void AudioTrack::trigger(int global_ival, int global_lval) {
 
 	//don't do anything until we have something to play!
-	if(!fileConfigured || !beatsConfigured)
-		return;
-
-	pthread_mutex_lock(&trigger_mutex);
-	printf("Track %d triggered\n", trackNo);
-	interval = global_ival;
-	loop = global_lval;
-	pthread_cond_signal(&trigger_cv);
-	pthread_mutex_unlock(&trigger_mutex);
-
+	if (fileConfigured && beatsConfigured && lengthConfigured) {
+		pthread_mutex_lock(&trigger_mutex);
+		//printf("Track %d triggered\n", trackNo);
+		interval = global_ival;
+		loop = global_lval;
+		pthread_cond_signal(&trigger_cv);
+		pthread_mutex_unlock(&trigger_mutex);
+	}
 }
 
 int AudioTrack::validateCommand(int argc, char **argv) {
 
 	map<string, CommandFunc>::iterator it;
 
-	if(!argc)
+	if (!argc)
 		return -1;
 
 	printf("validating command %s\n", argv[0]);
@@ -130,7 +134,7 @@ int AudioTrack::runCommand(int argc, char **argv) {
 
 	map<string, CommandFunc>::const_iterator it;
 
-	if(!argc)
+	if (!argc)
 		return -1;
 
 	printf("processing command %s\n", argv[0]);
@@ -140,7 +144,7 @@ int AudioTrack::runCommand(int argc, char **argv) {
 		return -1;
 	}
 
-	(this->*(it->second))(argc-1, &argv[1]);
+	(this->*(it->second))(argc - 1, &argv[1]);
 
 	//TODO, further verification of command argument length
 
@@ -152,13 +156,13 @@ int AudioTrack::runCommand(int argc, char **argv) {
 /* commandSetFile
  * Args: path/filename
  */
-int AudioTrack::commandSetFile( int argc, char **argv ) {
+int AudioTrack::commandSetFile(int argc, char **argv) {
 	printf("Called the %s command!\n", __func__);
 	//lock the mutex
 	pthread_mutex_lock(&data_mutex);
 
 	//adjust some stuff
-	if(argc)
+	if (argc)
 		setSound(argv[0]);
 
 	//unlock the mutex
@@ -169,41 +173,116 @@ int AudioTrack::commandSetFile( int argc, char **argv ) {
 
 /* commandSetBeat
  * Args:
- * examples: loop 1 set crotchet 1 (offset quaver)
+ * examples: loop 1 crotchet 1 (offset quaver)
  *           loop 1 fill crotchet
  *           loop 1 clear crotchet \
  */
-int AudioTrack::commandSetBeat( int argc, char **argv ) {
+int AudioTrack::commandSetBeat(int argc, char **argv) {
+	enum {
+		BEAT_SET, BEAT_CLEAR, BEAT_FILL,
+	} beat_setting;
+
 	printf("Called the %s command!\n", __func__);
+
+	if (!(fileConfigured && lengthConfigured)) {
+		TRACE(("Please configure the structure and track file first\n"));
+		return -1;
+	}
+
 	//lock the mutex
 	pthread_mutex_lock(&data_mutex);
 	int i;
-	int theloop = 0;
-	bool set = true;
-
+	char * pEnd;
+	int theloop = 1;
+	int thebeat = 1; //beat in bar, defaults to 1
+	beat_setting = BEAT_SET;
+	pulse_type_e beat_type = BEAT_EMPTY;
+	int length = 0;
 
 	//adjust some stuff
-	for ( i = 0 ; i < argc ; i++) {
+	for (i = 0; i < argc; i++) {
 
-		if(strcmp(argv[i], "loop") == 0) {
-			theloop = atoi(argv[i+1]);
-			TRACE(("Setting beat for loop %d\n", theloop));
+		if (strcmp(argv[i], "loop") == 0) {
+			if (argc > i + 1) {
+				theloop = strtol(argv[i + 1], &pEnd, 10);
+				TRACE(("Configuring beat for loop %d\n", theloop));
+				//TODO Limit loops betwwen 1 and MAX_LOOPS
+			}
 			i++;	//double increment this time
 		}
 
-		else if(strcmp(argv[i], "set") == 0) {
-			set = true;
+
+		else if (strcmp(argv[i], "clear") == 0) {
+			TRACE(("Clear\n"));
+			beat_setting = BEAT_CLEAR;
+		} else if (strcmp(argv[i], "fill") == 0) {
+			TRACE(("Fill\n"));
+			beat_setting = BEAT_FILL;
 		}
-		else if(strcmp(argv[i], "clear") == 0) {
-			set = false;
+
+		if (strcmp(argv[i], "semibreve") == 0) {
+			beat_type = BEAT_SEMIBREVE;
+			length = semibreve;
+		}
+		else if (strcmp(argv[i], "minim") == 0) {
+			beat_type = BEAT_MINIM;
+			length = minim;
+		}
+		else if (strcmp(argv[i], "crotchet") == 0) {
+			beat_type = BEAT_CROTCHET;
+			length = crotchet;
+		}
+		else if (strcmp(argv[i], "quaver") == 0) {
+			beat_type = BEAT_QUAVER;
+			length = quaver;
+		}
+		else if (strcmp(argv[i], "semiquaver") == 0) {
+			beat_type = BEAT_SEMIQUAVER;
+			length = semiquaver;
+		}
+		else if (strcmp(argv[i], "demisemiqauver") == 0) {
+			beat_type = BEAT_DEMISEMIQUAVER;
+			length = demisemiquaver;
+		}
+		else if (strcmp(argv[i], "hemidemisemiquaver") == 0) {
+			beat_type = BEAT_HEMIDEMISEMIQUAVER;
+			length = hemidemisemiquaver;
+		}
+
+		if(length != BEAT_EMPTY) {	//if we've set the length
+			if (argc > i + 1) {
+				thebeat = strtol(argv[i + 1], &pEnd, 10);
+				TRACE(("Configuring beat %d, the note length is %d\n", thebeat, length));
+				thebeat--;						//index is zero-based so adjust
+				int j = thebeat * pulses;			//get starting pulse
+
+				if (beat_setting == BEAT_SET) {
+					TRACE(("Setting loop %d pulse %d\n", theloop, j));
+					trackData[theloop][j++] = beat_type;
+					//for (; j < (thebeat * 96) + pulses; j++) {
+						//	TRACE(("Setting pulse %d\n", j));
+						//	trackData[theloop][j] = BEAT_FILL;
+					//}
+				} else if (beat_setting == BEAT_CLEAR) {
+					for (; j < (thebeat * pulses) + length; j++)
+						trackData[theloop][j] = BEAT_EMPTY;
+				} else if (beat_setting == BEAT_FILL) {
+					//TODO - handle the filling throughout the bar
+					TRACE(("Filling loop %d pulse %d\n", theloop, j));
+					for ( ; j < pulsesPerBar(); j++) {
+						if ((j % length) == 0) {
+							TRACE(("Setting pulse %d\n", j));
+							trackData[theloop][j] = beat_type;
+						}
+					}
+				}
+			}
 		}
 
 	}
 
-
-
-
-	beatsConfigured=true;
+	//need to think about how to handle this. Need to check if an entire loop is erased
+	beatsConfigured = true;
 
 	//unlock the mutex
 	pthread_mutex_unlock(&data_mutex);
