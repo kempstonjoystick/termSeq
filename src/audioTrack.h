@@ -137,7 +137,7 @@ class AudioTrack : public Thread
 	}
 
 	//called by main, tells us to wake up and play something (or not)
-	void trigger(int global_ival, int global_lval);
+	int trigger(int global_ival, int global_lval);
 
 	//TODO - make this private
 	void setSound(char *file) {

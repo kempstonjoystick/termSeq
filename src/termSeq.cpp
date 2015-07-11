@@ -195,9 +195,29 @@ int main() {
 			for(int j = 0 ; j < pulses*beats ; j++) {
 				gettimeofday(&start_time, NULL);
 	//			printf("main thread waking others\n");
-				track[0]->trigger(j, loop);
-				track[1]->trigger(j, loop);
-				track[2]->trigger(j, loop);
+
+				if( (j % pulses) == 0) {
+					printf("\t %d|", j/pulses+1);
+				}
+				else if ((j % 8) == 0) {
+					printf("\t  |");
+				}
+
+				for (int k = 0 ; k < MAX_TRACKS; k++) {
+					int fired = track[k]->trigger(j, loop);
+					if ((j % 8) == 0) {
+						if(fired)
+							printf("  *  ");
+						else
+							printf("     ");
+					}
+
+				}
+				if ((j % 8) == 0) {
+					printf("| \n");
+				}
+
+
 				SDL_Delay(5);
 				 gettimeofday(&end_time, NULL);
 

@@ -54,16 +54,16 @@ void *AudioTrack::run(void) {
 		//play sound here
 		if ((trackData[local_loop][local_interval] != BEAT_FILL)
 				&& (trackData[local_loop][local_interval] != BEAT_EMPTY)) {
-			printf("Track %d playing interval %d\n", trackNo, local_interval);
-			gettimeofday(&end_time, NULL);
+			//printf("Track %d playing interval %d\n", trackNo, local_interval);
+		//	gettimeofday(&end_time, NULL);
 
-			float duration = (end_time.tv_sec - start_time.tv_sec)
-					+ (end_time.tv_usec - start_time.tv_usec) * 1E-6;
+		//	float duration = (end_time.tv_sec - start_time.tv_sec)
+		//			+ (end_time.tv_usec - start_time.tv_usec) * 1E-6;
 
-			if (trackNo == 0)
-				cout << "Track duration between triggers: " << duration << "s"
-						<< endl;
-			start_time = end_time;
+		//	if (trackNo == 0)
+		//		cout << "Track duration between triggers: " << duration << "s"
+		//				<< endl;
+		//	start_time = end_time;
 
 			channel = Mix_PlayChannel(trackNo, sound, 0);
 			if (channel == -1) {
@@ -98,7 +98,7 @@ void *AudioTrack::run(void) {
 }
 
 //TODO hand this an or'ed loop, interval, pulse
-void AudioTrack::trigger(int global_ival, int global_lval) {
+int AudioTrack::trigger(int global_ival, int global_lval) {
 
 	//don't do anything until we have something to play!
 	if (fileConfigured && beatsConfigured && lengthConfigured) {
@@ -109,6 +109,10 @@ void AudioTrack::trigger(int global_ival, int global_lval) {
 		pthread_cond_signal(&trigger_cv);
 		pthread_mutex_unlock(&trigger_mutex);
 	}
+	if(trackData[global_lval][global_ival])
+		return 1;
+
+	return 0;
 }
 
 int AudioTrack::validateCommand(int argc, char **argv) {
@@ -192,6 +196,7 @@ int AudioTrack::commandSetBeat(int argc, char **argv) {
 	//lock the mutex
 	pthread_mutex_lock(&data_mutex);
 	int i;
+	int offset=0;
 	char * pEnd;
 	int theloop = 1;
 	int thebeat = 1; //beat in bar, defaults to 1
@@ -211,6 +216,12 @@ int AudioTrack::commandSetBeat(int argc, char **argv) {
 			i++;	//double increment this time
 		}
 
+		else if (strcmp(argv[i], "offset") == 0) {
+				if (argc > i + 1) {
+					offset = strtol(argv[i + 1], &pEnd, 10);
+					printf("Set offset to %d\n", offset);
+				}
+		}
 
 		else if (strcmp(argv[i], "clear") == 0) {
 			TRACE(("Clear\n"));
@@ -255,6 +266,16 @@ int AudioTrack::commandSetBeat(int argc, char **argv) {
 				TRACE(("Configuring beat %d, the note length is %d\n", thebeat, length));
 				thebeat--;						//index is zero-based so adjust
 				int j = thebeat * pulses;			//get starting pulse
+				if(offset) {
+					if ((offset * length) < pulses) {
+						j = j + (offset * length);
+						printf("j is %d\n", j);
+					}
+					else {
+						printf("offset too long - ignoring\n");
+						return -1;
+					}
+				}
 
 				if (beat_setting == BEAT_SET) {
 					TRACE(("Setting loop %d pulse %d\n", theloop, j));
@@ -264,8 +285,10 @@ int AudioTrack::commandSetBeat(int argc, char **argv) {
 						//	trackData[theloop][j] = BEAT_FILL;
 					//}
 				} else if (beat_setting == BEAT_CLEAR) {
-					for (; j < (thebeat * pulses) + length; j++)
-						trackData[theloop][j] = BEAT_EMPTY;
+					for (int k = j; k < (j + length); k++) {
+						TRACE(("Clearing loop %d pulse %d\n", theloop, k));
+						trackData[theloop][k] = BEAT_EMPTY;
+					}
 				} else if (beat_setting == BEAT_FILL) {
 					//TODO - handle the filling throughout the bar
 					TRACE(("Filling loop %d pulse %d\n", theloop, j));
