@@ -211,7 +211,7 @@ int AudioTrack::commandSetBeat(int argc, char **argv) {
 			if (argc > i + 1) {
 				theloop = strtol(argv[i + 1], &pEnd, 10);
 				TRACE(("Configuring beat for loop %d\n", theloop));
-				//TODO Limit loops betwwen 1 and MAX_LOOPS
+				//TODO Limit loops between 1 and MAX_LOOPS
 			}
 			i++;	//double increment this time
 		}
@@ -259,6 +259,8 @@ int AudioTrack::commandSetBeat(int argc, char **argv) {
 			beat_type = BEAT_HEMIDEMISEMIQUAVER;
 			length = hemidemisemiquaver;
 		}
+
+		printf("Length is %d\n");
 
 		if(length != BEAT_EMPTY) {	//if we've set the length
 			if (argc > i + 1) {
@@ -309,6 +311,9 @@ int AudioTrack::commandSetBeat(int argc, char **argv) {
 
 	//unlock the mutex
 	pthread_mutex_unlock(&data_mutex);
+
+//	dumpLoopData(0);
+
 
 	return 0;
 }

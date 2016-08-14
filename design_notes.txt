@@ -1,5 +1,17 @@
 Linux Text Sequencer:
 
+Ubuntu dependencies:
+sudo apt-get install libsdl2-2.0-0
+sudo apt-get install libsdl2-2.0-0-devel
+sudo apt-get install libsdl2-mixer-dev 
+
+
+Usage:
+  ./seqctl structure 4 96
+  ./seqctl track 1 file ~/Music/Samples/TR808WAV/BD/BD0000.WAV 
+  ./seqctl track 1 beat offset 0 loop 1 crotchet 1
+
+
 Following framework:
 
 (1) 

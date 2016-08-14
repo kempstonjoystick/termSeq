@@ -192,10 +192,15 @@ int main() {
 
 		//for( int i = 0 ; i < 1 ; i++) {
 		//for( int i = 0 ; i < 10 ; i++) { //loops
-			for(int j = 0 ; j < pulses*beats ; j++) {
+
+		//track[0]->dumpLoopData(0);
+
+		//iterate over each pulse
+		for(int j = 0 ; j < pulses*beats ; j++) {
 				gettimeofday(&start_time, NULL);
 	//			printf("main thread waking others\n");
 
+				//if we hit a beat, print out the beat number
 				if( (j % pulses) == 0) {
 					printf("\t %d|", j/pulses+1);
 				}
@@ -203,6 +208,7 @@ int main() {
 					printf("\t  |");
 				}
 
+				//iterate over each track
 				for (int k = 0 ; k < MAX_TRACKS; k++) {
 					int fired = track[k]->trigger(j, loop);
 					if ((j % 8) == 0) {
@@ -213,6 +219,7 @@ int main() {
 					}
 
 				}
+				//if we were on a beat, do a newline
 				if ((j % 8) == 0) {
 					printf("| \n");
 				}
